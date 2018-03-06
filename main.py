@@ -1,11 +1,16 @@
+import argparse
+import gzip
 import hashlib
 import itertools
-import markdown
-import gzip
 
 from glob import glob
+from os import chdir
+from os import makedirs
 from os import path
-from os import mkdir
+
+import markdown
+
+from styles import get_string
 
 
 class Build_HTML():
@@ -26,7 +31,7 @@ class Build_HTML():
 
     def build_html_front_page(self):
         for filepath in self.filepaths:
-            filelist = filepath.split("\\")
+            filelist = filepath.split(path.sep)
             self.i = 0
             # Add folder or file
             for entry in filelist:
@@ -47,7 +52,7 @@ class Build_HTML():
         """
         filelist.pop(-1)
         try:
-            next_path = self.filepaths[self.position].split("\\")[:-1]
+            next_path = self.filepaths[self.position].split(path.sep)[:-1]
         except IndexError:
             next_path = ""
         if next_path != filelist and self.started > self.closed:
@@ -165,7 +170,7 @@ def setup_html(html):
     return block_html
 
 
-def write_html(html, filepath):
+def write_html(html, filepath, buildpath):
     """
     Write the html file to an md5 named file.
     :param html:
@@ -173,7 +178,7 @@ def write_html(html, filepath):
     :return:
     """
     md5_filename = filename_md5(filepath)
-    final_name = path.join("html", md5_filename + ".html")
+    final_name = path.join(buildpath, "html", md5_filename + ".html")
     with open(final_name, "w") as f:
         f.write(html)
 
@@ -184,17 +189,17 @@ def file_rename(filename):
     :param filename: str(), filename.
     :return: str(), filename, no extension.
     """
-    stripped_filename = filename.split("\\")[-1].replace('.md','')
+    stripped_filename = filename.split(path.sep)[-1].replace('.md', '')
     return stripped_filename
 
 
-def get_markdown_files():
+def get_markdown_files(filepath):
     """
     Parse and get all files that end in '.md' in the current path.
     :return:
     """
     # TODO: Make it so you can specify the starting location.
-    filenames = glob("**/*.md", recursive=True)
+    filenames = glob(path.join(filepath + "**/*.md"), recursive=True)
     return filenames
 
 
@@ -208,53 +213,75 @@ def filename_md5(markdown_data):
     return hash.hexdigest()
 
 
-def write_index(html):
+def write_index(html, buildpath):
     """
     Write the index.html file to the main folder.
     :param html:
     :return:
     """
     # TODO: make sure the file is written to the correct folder.
-    with open('index.html', 'w') as f:
+    with open(path.join(buildpath, 'index.html'), 'w') as f:
         f.write(html)
 
 
-def decompress_styles():
+def decompress_styles(buildpath):
     """
     Decompress the stylesheet.
     :return:
     """
-    with gzip.open("styles.css.gz", 'rb') as f:
-        data = f.read()
+    data = get_string()
 
-    with open(path.join('html', 'styles.css'), "w") as f:
+    with open(path.join(buildpath, 'html', 'styles.css'), "w") as f:
         f.write(data.decode('utf-8'))
 
 
-def init_folder():
+def init_folder(buildpath):
     """
     Helper functions to make certain supporting folders and files are present.
     :return:
     """
     try:
-        mkdir("html")
+        makedirs(path.join(buildpath, "html"))
     except OSError:
         pass
-    decompress_styles()
+    decompress_styles(buildpath)
 
+
+def init_argparse():
+    parser = argparse.ArgumentParser(description='Convert Markdown files to HTML.')
+    parser.add_argument(
+        "-t", '--target',
+        help="Starting point to look for markdown files.",
+        # nargs="?",
+        # nargs=1,
+        default="",  # Should be current folder. Also might need to be
+        metavar="PATH",
+    )
+    parser.add_argument(
+        '-b', '--build',
+        help="Location were index.html and the html folder will be dropped.",
+        # nargs=1,
+        metavar="PATH",
+        default="",
+    )
+
+    # TODO: Might need some basic path checking?
+    args = parser.parse_args()
+    return args
 
 if __name__ == '__main__':
-    filepaths = get_markdown_files()
+    args = init_argparse()
+    filepaths = get_markdown_files(args.target)
     build_html = Build_HTML(filepaths)
     html = setup_html(build_html.html)
-    write_index(html)
 
-    init_folder()
+    init_folder(args.build)
+    write_index(html, args.build)
 
     for filepath in filepaths:
         filename = file_rename(filepath)
         markdown_data = read_mkd(filepath)
         html = convert_mkd(markdown_data)
         block_html = setup_html(html)
-        write_html(block_html, filepath)
+        write_html(block_html, filepath, args.build)
 
