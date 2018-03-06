@@ -8,4 +8,4 @@ entry = "H4sICPnSkVoCAHN0eWxlcy5jc3MA3Vprb9MwFP2+XxFASICa4nZ9T0LQjpd4ChB8dhK3seb
 
 def get_string():
     b64 = b64decode(entry)
-    return str(gzip.decompress(b64)).encode('utf-8')
+    return gzip.decompress(b64)

@@ -5,6 +5,7 @@ import itertools
 
 from glob import glob
 from os import chdir
+from os import getcwd
 from os import makedirs
 from os import path
 
@@ -193,13 +194,13 @@ def file_rename(filename):
     return stripped_filename
 
 
-def get_markdown_files(filepath):
+def get_markdown_files():
     """
     Parse and get all files that end in '.md' in the current path.
     :return:
     """
     # TODO: Make it so you can specify the starting location.
-    filenames = glob(path.join(filepath + "**/*.md"), recursive=True)
+    filenames = glob("**/*.md", recursive=True)
     return filenames
 
 
@@ -269,19 +270,29 @@ def init_argparse():
     args = parser.parse_args()
     return args
 
+
 if __name__ == '__main__':
     args = init_argparse()
-    filepaths = get_markdown_files(args.target)
+    current_path = getcwd()
+
+    chdir(args.target)
+    filepaths = get_markdown_files()
     build_html = Build_HTML(filepaths)
-    html = setup_html(build_html.html)
+    index_html = setup_html(build_html.html)
 
-    init_folder(args.build)
-    write_index(html, args.build)
-
+    html_memory = {}
     for filepath in filepaths:
         filename = file_rename(filepath)
         markdown_data = read_mkd(filepath)
         html = convert_mkd(markdown_data)
         block_html = setup_html(html)
+        html_memory[filepath] = block_html
+
+
+    # Write operations need to be done after folder change.
+    chdir(current_path)
+    init_folder(args.build)
+    write_index(index_html, args.build)
+    for filepath, block_html in html_memory.items():
         write_html(block_html, filepath, args.build)
 
