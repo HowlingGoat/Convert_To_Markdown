@@ -271,11 +271,16 @@ def init_argparse():
     return args
 
 
+def change_dir(target):
+    if target != "":
+        chdir(args.target)
+
+
 if __name__ == '__main__':
     args = init_argparse()
     current_path = getcwd()
 
-    chdir(args.target)
+    change_dir(args.target)
     filepaths = get_markdown_files()
     build_html = Build_HTML(filepaths)
     index_html = setup_html(build_html.html)
